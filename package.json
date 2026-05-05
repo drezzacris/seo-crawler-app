@@ -1,14 +1,11 @@
-<script type="application/ld+json">
 {
   "name": "seo-crawler-app",
-  "version": "2.0.0",
-  "description": "Web app para crawl e auditoria técnica de SEO com Node.js",
-  "main": "server.js",
+  "version": "1.0.0",
+  "description": "Fast SEO site audit",
   "type": "module",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "install-browsers": "npx playwright install chromium"
+    "start": "node server.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.6.0",
@@ -22,4 +19,3 @@
     "xml2js": "^0.6.2"
   }
 }
-</script>
