@@ -1,19 +1,16 @@
-import { saveResults, getLatestCrawlResults } from "./database.js";
 import "dotenv/config";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { runCrawler } from "./crawler.js";
 import { exportToCSV } from "./exporter.js";
-import { getLatestCrawlResults } from "./database.js";
+import { saveResults, getLatestCrawlResults } from "./database.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-let lastCrawlResult = [];
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -60,9 +57,7 @@ app.post("/api/crawl", async (req, res) => {
 
 app.get("/api/export/csv", (req, res) => {
   try {
-    const data = lastCrawlResult.length
-      ? lastCrawlResult
-      : getLatestCrawlResults();
+    const data = getLatestCrawlResults();
 
     const csv = exportToCSV(data);
 
