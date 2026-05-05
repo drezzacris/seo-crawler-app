@@ -43,7 +43,7 @@ app.post("/api/crawl", async (req, res) => {
       includeSitemap: Boolean(includeSitemap)
     });
 
-    lastCrawlResult = result;
+    saveResults(result);
 
     return res.json({
       total: result.length,
