@@ -1,1 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>SEOTEC SEO Crawler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+      margin: 0;
+      padding: 30px;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 18px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    input, button, label {
+      font-size: 14px;
+    }
+
+    input {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .options {
+      display: flex;
+      gap: 20px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #111827;
+      color: #fff;
+      border: none;
+      padding: 13px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #374151;
+    }
+
+    .export {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin: 15px 0;
+    }
+
+    .status {
+      font-weight: bold;
+      margin: 15px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 9px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f3f4f6;
+      text-align: left;
+      position: sticky;
+      top: 0;
+    }
+
+    .issue {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .ok {
+      color: #15803d;
+      font-weight: bold;
+    }
+
+    .scroll {
+      overflow-x: auto;
+      max-height: 650px;
+      overflow-y: auto;
+    }
+
+    @media(max-width: 900px) {
+      .form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>SEOTEC SEO Crawler</h1>
+
+    <div class="form">
+      <input id="startUrl" type="url" placeholder="https://www.exemplo.com.br" />
+      <input id="maxPages" type="number" value="50" min="1" />
+      <input id="concurrency" type="number" value="3" min="1" max="5" />
+    </div>
+
+    <div class="options">
+      <label>
+        <input id="renderJs" type="checkbox" />
+        Renderizar JavaScript
+      </label>
+
+      <label>
+        <input id="respectRobots" type="checkbox" checked />
+        Respeitar robots.txt
+      </label>
+
+      <label>
+        <input id="includeSitemap" type="checkbox" checked />
+        Incluir URLs do sitemap
+      </label>
+    </div>
+
+    <button onclick="startCrawl()">Iniciar auditoria</button>
+
+    <div id="status" class="status"></div>
+
+    <a href="/api/export/csv" class="export" target="_blank">Exportar CSV</a>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Canonical</th>
+            <th>H1</th>
+            <th>Schema</th>
+            <th>ALT</th>
+            <th>Page Size</th>
+            <th>Redirect</th>
+            <th>Broken Links</th>
+            <th>Issues</th>
+          </tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function startCrawl() {
+      const status = document.getElementById("status");
+      const results = document.getElementById("results");
+
+      results.innerHTML = "";
+      status.innerText = "Executando auditoria técnica. Aguarde...";
+
+      const payload = {
+        startUrl: document.getElementById("startUrl").value,
+        maxPages: Number(document.getElementById("maxPages").value),
+        concurrency: Number(document.getElementById("concurrency").value),
+        renderJs: document.getElementById("renderJs").checked,
+        respectRobots: document.getElementById("respectRobots").checked,
+        includeSitemap: document.getElementById("includeSitemap").checked
+      };
+
+      try {
+        const response = await fetch("/api/crawl"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await response.json();
+
+        if (!response.ok) {
+          throw new Error(json.details || json.error);
+        }
+
+        status.innerText = `Auditoria finalizada. ${json.total} URLs analisadas.`;
+
+        json.data.forEach(page => {
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+            <td><a href="${page.url}" target="_blank">${page.url}</a></td>
+            <td>${page.status || "-"}</td>
+            <td>${page.title || "-"}</td>
+            <td>${page.metaDescription || "-"}</td>
+            <td>${page.canonical || "-"}</td>
+            <td>${page.h1Count || 0}</td>
+            <td>${page.schemaCount || 0}</td>
+            <td>${page.imagesWithoutAlt || 0}</td>
+            <td>${page.pageSizeKb || 0} KB</td>
+            <td>${page.redirectChainLength || 0}</td>
+            <td>${page.brokenLinksCount || 0}</td>
+            <td class="${page.issues?.length ? "issue" : "ok"}">
+              ${page.issues?.length ? page.issues.join("<br>") : "OK"}
+            </td>
+          `;
+
+          results.appendChild(tr);
+        });
+      } catch (error) {
+        status.innerText = `Erro: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
+
 
