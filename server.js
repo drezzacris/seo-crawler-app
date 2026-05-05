@@ -1,3 +1,4 @@
+import { saveResults, getLatestCrawlResults } from "./database.js";
 import "dotenv/config";
 import express from "express";
 import path from "path";
