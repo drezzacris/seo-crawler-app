@@ -136,6 +136,17 @@ export async function runCrawler({
               sitemapUrls,
               redirectInfo
             });
+        if (!Array.isArray(data.issues)) {
+        data.issues = [];
+        }
+        if (
+            htmlLower.includes("verifying your browser") ||
+            htmlLower.includes("checking your browser") ||
+            htmlLower.includes("cloudflare") ||
+            htmlLower.includes("cf-browser-verification")
+            ) {
+      data.issues.push("Possível bloqueio anti-bot / Cloudflare");
+      }
 
             data.brokenLinks = await checkBrokenLinks(data.links || [], userAgent);
             data.brokenLinksCount = data.brokenLinks.length;
