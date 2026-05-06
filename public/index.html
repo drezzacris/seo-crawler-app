@@ -112,6 +112,13 @@
       max-height: 650px;
       overflow-y: auto;
     }
+    .form label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #374151;
+  }
   </style>
 </head>
 
@@ -119,11 +126,24 @@
   <div class="container">
     <h1>SEO Crawler</h1>
 
-    <div class="form">
-      <input id="startUrl" type="url" value="https://www.desincha.com.br/" />
-      <input id="maxPages" type="number" value="50" min="1" />
-      <input id="concurrency" type="number" value="3" min="1" max="5" />
-    </div>
+<div class="form">
+
+  <div>
+    <label>URL inicial</label>
+    <input id="startUrl" type="url" value="https://www.desincha.com.br/" />
+  </div>
+
+  <div>
+    <label>Máximo de páginas</label>
+    <input id="maxPages" type="number" value="50" min="1" />
+  </div>
+
+  <div>
+    <label>Concorrência de requests</label>
+    <input id="concurrency" type="number" value="2" min="1" max="5" />
+  </div>
+
+</div>
 
     <div class="options">
       <label>
