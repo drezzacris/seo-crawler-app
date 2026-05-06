@@ -1,15 +1,9 @@
 import * as cheerio from "cheerio";
 import pLimit from "p-limit";
-import { renderWithPlaywright } from "./renderer.js";
 import { getRobotsTxt } from "./robots.js";
 import { getSitemapUrls } from "./sitemap.js";
 import { checkRedirectChain } from "./redirects.js";
 import { extractAndAuditPage, normalizeUrl, isInternalUrl } from "./audit.js";
-import {
-  createCrawl,
-  saveCrawlResult,
-  finishCrawl
-} from "./database.js";
 
 async function fetchHtml(url, userAgent) {
   const start = Date.now();
@@ -22,6 +16,7 @@ async function fetchHtml(url, userAgent) {
   });
 
   const contentType = response.headers.get("content-type") || "";
+
   const html = contentType.includes("text/html")
     ? await response.text()
     : "";
@@ -38,7 +33,6 @@ async function fetchHtml(url, userAgent) {
 
 async function checkBrokenLinks(links, userAgent) {
   const limitedLinks = links.slice(0, 30);
-
   const results = [];
 
   for (const link of limitedLinks) {
@@ -74,7 +68,6 @@ export async function runCrawler({
   startUrl,
   maxPages = 50,
   concurrency = 3,
-  renderJs = false,
   respectRobots = true,
   includeSitemap = true
 }) {
@@ -85,7 +78,6 @@ export async function runCrawler({
     throw new Error("URL inicial inválida.");
   }
 
-  const crawlId = createCrawl(start);
   const baseHostname = new URL(start).hostname;
 
   const robots = respectRobots
@@ -117,85 +109,77 @@ export async function runCrawler({
       if (robots && !robots.isAllowed(nextUrl, userAgent)) {
         visited.add(nextUrl);
 
-        const blocked = {
+        results.push({
           url: nextUrl,
           status: "BLOCKED_BY_ROBOTS",
           issues: ["Bloqueada pelo robots.txt"]
-        };
+        });
 
-        results.push(blocked);
-        saveCrawlResult(crawlId, blocked);
         continue;
       }
 
       visited.add(nextUrl);
 
-      batch.push(limit(async () => {
-        try {
-          const redirectInfo = await checkRedirectChain(nextUrl, userAgent);
+      batch.push(
+        limit(async () => {
+          try {
+            const redirectInfo = await checkRedirectChain(nextUrl, userAgent);
 
-          const page = renderJs
-            ? await renderWithPlaywright(nextUrl)
-            : await fetchHtml(nextUrl, userAgent);
+            const page = await fetchHtml(nextUrl, userAgent);
 
-          const data = extractAndAuditPage({
-            url: nextUrl,
-            ...page,
-            baseHostname,
-            sitemapUrls,
-            redirectInfo
-          });
+            const data = extractAndAuditPage({
+              url: nextUrl,
+              ...page,
+              baseHostname,
+              sitemapUrls,
+              redirectInfo
+            });
 
-          data.brokenLinks = await checkBrokenLinks(data.links || [], userAgent);
-          data.brokenLinksCount = data.brokenLinks.length;
+            data.brokenLinks = await checkBrokenLinks(data.links || [], userAgent);
+            data.brokenLinksCount = data.brokenLinks.length;
 
-          if (data.brokenLinksCount > 0) {
-            data.issues.push(`${data.brokenLinksCount} link(s) quebrado(s)`);
-          }
-
-          results.push(data);
-          saveCrawlResult(crawlId, data);
-
-          const $ = cheerio.load(page.html || "");
-
-          $("a[href]").each((_, el) => {
-            const href = $(el).attr("href");
-
-            try {
-              const absolute = normalizeUrl(new URL(href, nextUrl).href);
-
-              if (
-                absolute &&
-                isInternalUrl(absolute, baseHostname) &&
-                !visited.has(absolute) &&
-                !queue.includes(absolute) &&
-                !absolute.includes("mailto:") &&
-                !absolute.includes("tel:")
-              ) {
-                queue.push(absolute);
-              }
-            } catch {
-              // Ignora links inválidos
+            if (data.brokenLinksCount > 0) {
+              data.issues.push(`${data.brokenLinksCount} link(s) quebrado(s)`);
             }
-          });
-        } catch (error) {
-          const errorData = {
-            url: nextUrl,
-            status: "ERROR",
-            error: error.message,
-            issues: ["Erro ao acessar ou processar a URL"]
-          };
 
-          results.push(errorData);
-          saveCrawlResult(crawlId, errorData);
-        }
-      }));
+            results.push(data);
+
+            const $ = cheerio.load(page.html || "");
+
+            $("a[href]").each((_, el) => {
+              const href = $(el).attr("href");
+
+              try {
+                const absolute = normalizeUrl(new URL(href, nextUrl).href);
+
+                if (
+                  absolute &&
+                  isInternalUrl(absolute, baseHostname) &&
+                  !visited.has(absolute) &&
+                  !queue.includes(absolute) &&
+                  !absolute.includes("mailto:") &&
+                  !absolute.includes("tel:")
+                ) {
+                  queue.push(absolute);
+                }
+              } catch {
+                // Ignora links inválidos
+              }
+            });
+          } catch (error) {
+            results.push({
+              url: nextUrl,
+              status: "ERROR",
+              error: error.message,
+              issues: ["Erro ao acessar ou processar a URL"]
+            });
+          }
+        })
+      );
     }
 
     await Promise.all(batch);
   }
-
-  finishCrawl(crawlId, results.length);
 
   return results;
 }
