@@ -124,7 +124,7 @@
 
 <body>
   <div class="container">
-    <h1>SEOTEC SEO Crawler</h1>
+    <h1>SEO Crawler</h1>
 
     <div class="form">
       <input id="startUrl" type="url" placeholder="https://www.exemplo.com.br" />
@@ -204,7 +204,15 @@
           body: JSON.stringify(payload)
         });
 
-        const json = await response.json();
+        const text = await response.text();
+
+        let json;
+
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          throw new Error("Resposta inválida da API: " + text.slice(0, 300));
+        }
 
         if (!response.ok) {
           throw new Error(json.details || json.error);
