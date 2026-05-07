@@ -131,6 +131,7 @@ export async function runCrawler({
             const page = renderJs
             ? await renderWithExternalService(nextUrl)
             : await fetchHtml(nextUrl, userAgent);
+            
             const data = extractAndAuditPage({
               url: nextUrl,
               ...page,
