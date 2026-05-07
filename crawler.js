@@ -32,7 +32,7 @@ async function fetchHtml(url, userAgent) {
 }
 
 async function checkBrokenLinks(links, userAgent) {
-  const limitedLinks = links.slice(0, 30);
+  const limitedLinks = links.slice(0, 20);
   const results = [];
 
   for (const link of limitedLinks) {
@@ -67,13 +67,15 @@ async function checkBrokenLinks(links, userAgent) {
 export async function runCrawler({
   startUrl,
   maxPages = 50,
-  concurrency = 3,
+  concurrency = 1,
+  renderJs = false,
   respectRobots = true,
   includeSitemap = true
 }) {
   const userAgent =
-  process.env.CRAWLER_USER_AGENT ||
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+    process.env.CRAWLER_USER_AGENT ||
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+
   const start = normalizeUrl(startUrl);
 
   if (!start) {
@@ -93,7 +95,6 @@ export async function runCrawler({
   const visited = new Set();
   const queue = [start, ...sitemapUrls.slice(0, maxPages)];
   const results = [];
-
   const limit = pLimit(concurrency);
 
   while (queue.length > 0 && visited.size < maxPages) {
@@ -133,9 +134,9 @@ export async function runCrawler({
               const { renderWithExternalService } = await import("./externalRenderer.js");
               page = await renderWithExternalService(nextUrl);
             } else {
-            page = await fetchHtml(nextUrl, userAgent);
+              page = await fetchHtml(nextUrl, userAgent);
             }
-            
+
             const data = extractAndAuditPage({
               url: nextUrl,
               ...page,
@@ -143,17 +144,21 @@ export async function runCrawler({
               sitemapUrls,
               redirectInfo
             });
-        if (!Array.isArray(data.issues)) {
-        data.issues = [];
-        }
-        if (
-            htmlLower.includes("verifying your browser") ||
-            htmlLower.includes("checking your browser") ||
-            htmlLower.includes("cloudflare") ||
-            htmlLower.includes("cf-browser-verification")
+
+            if (!Array.isArray(data.issues)) {
+              data.issues = [];
+            }
+
+            const htmlLower = (page.html || "").toLowerCase();
+
+            if (
+              htmlLower.includes("verifying your browser") ||
+              htmlLower.includes("checking your browser") ||
+              htmlLower.includes("cloudflare") ||
+              htmlLower.includes("cf-browser-verification")
             ) {
-      data.issues.push("Possível bloqueio anti-bot / Cloudflare");
-      }
+              data.issues.push("Possível bloqueio anti-bot / Cloudflare");
+            }
 
             data.brokenLinks = await checkBrokenLinks(data.links || [], userAgent);
             data.brokenLinksCount = data.brokenLinks.length;
@@ -191,7 +196,7 @@ export async function runCrawler({
               url: nextUrl,
               status: "ERROR",
               error: error.message,
-              issues: ["Erro ao acessar ou processar a URL"]
+              issues: [`Erro ao acessar ou processar a URL: ${error.message}`]
             });
           }
         })
