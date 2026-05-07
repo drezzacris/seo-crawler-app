@@ -23,13 +23,14 @@ app.get("/health", (req, res) => {
 
 app.post("/api/crawl", async (req, res) => {
   try {
-    const {
-      startUrl,
-      maxPages = 50,
-      concurrency = 3,
-      respectRobots = true,
-      includeSitemap = true
-    } = req.body;
+  const result = await runCrawler({
+  startUrl,
+  maxPages: Number(maxPages),
+  concurrency: Number(concurrency),
+  renderJs: Boolean(renderJs),
+  respectRobots: Boolean(respectRobots),
+  includeSitemap: Boolean(includeSitemap)
+});
 
     if (!startUrl) {
       return res.status(400).json({
