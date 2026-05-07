@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { runCrawler } from "./crawler.js";
 import { exportToCSV } from "./exporter.js";
 import { saveResults, getLatestCrawlResults } from "./database.js";
 
@@ -23,6 +22,17 @@ app.get("/health", (req, res) => {
 
 app.post("/api/crawl", async (req, res) => {
   try {
+    const { runCrawler } = await import("./crawler.js");
+
+    const {
+      startUrl,
+      maxPages = 50,
+      concurrency = 3,
+      renderJs = false,
+      respectRobots = true,
+      includeSitemap = true
+    } = req.body;
+    
   const result = await runCrawler({
   startUrl,
   maxPages: Number(maxPages),
