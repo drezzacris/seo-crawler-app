@@ -1,4 +1,3 @@
-import { renderWithExternalService } from "./externalRenderer.js";
 import * as cheerio from "cheerio";
 import pLimit from "p-limit";
 import { getRobotsTxt } from "./robots.js";
@@ -128,9 +127,14 @@ export async function runCrawler({
           try {
             const redirectInfo = await checkRedirectChain(nextUrl, userAgent);
 
-            const page = renderJs
-            ? await renderWithExternalService(nextUrl)
-            : await fetchHtml(nextUrl, userAgent);
+            let page;
+
+            if (renderJs) {
+              const { renderWithExternalService } = await import("./externalRenderer.js");
+              page = await renderWithExternalService(nextUrl);
+            } else {
+            page = await fetchHtml(nextUrl, userAgent);
+            }
             
             const data = extractAndAuditPage({
               url: nextUrl,
