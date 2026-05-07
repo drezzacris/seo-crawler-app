@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -27,20 +28,11 @@ app.post("/api/crawl", async (req, res) => {
     const {
       startUrl,
       maxPages = 50,
-      concurrency = 3,
+      concurrency = 1,
       renderJs = false,
       respectRobots = true,
       includeSitemap = true
     } = req.body;
-    
-  const result = await runCrawler({
-  startUrl,
-  maxPages: Number(maxPages),
-  concurrency: Number(concurrency),
-  renderJs: Boolean(renderJs),
-  respectRobots: Boolean(respectRobots),
-  includeSitemap: Boolean(includeSitemap)
-});
 
     if (!startUrl) {
       return res.status(400).json({
@@ -52,7 +44,7 @@ app.post("/api/crawl", async (req, res) => {
       startUrl,
       maxPages: Number(maxPages),
       concurrency: Number(concurrency),
-      renderJs: false,
+      renderJs: Boolean(renderJs),
       respectRobots: Boolean(respectRobots),
       includeSitemap: Boolean(includeSitemap)
     });
@@ -66,7 +58,8 @@ app.post("/api/crawl", async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       error: "Erro ao executar o crawl.",
-      details: error.message
+      details: error.message,
+      stack: error.stack
     });
   }
 });
