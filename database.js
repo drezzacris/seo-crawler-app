@@ -1,7 +1,7 @@
 let memoryDB = [];
 
 export function saveResults(data) {
-  memoryDB = data;
+  memoryDB = Array.isArray(data) ? data : [];
 }
 
 export function getLatestCrawlResults() {
